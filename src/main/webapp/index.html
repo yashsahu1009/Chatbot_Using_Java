@@ -1,0 +1,271 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot with Voice Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* General body setup */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f7f7f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        /* Chat container setup */
+        .chat-container {
+            width: 400px;
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+            background-color: #fff;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        /* Header section */
+        .chat-header {
+            background-color: #343a40;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        /* Chat area - where messages will be shown */
+        .chat-box {
+            flex-grow: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+        }
+
+        /* Style for messages */
+        .message {
+            margin: 10px 0;
+            display: flex;
+            flex-direction: column;
+            max-width: 80%;
+        }
+
+        /* User's message */
+        .message.user {
+            align-items: flex-end;
+        }
+
+        /* Bot's message */
+        .message.bot {
+            align-items: flex-start;
+        }
+
+        /* Message bubble style */
+        .message p {
+            padding: 10px;
+            border-radius: 20px;
+            max-width: 90%;
+            font-size: 14px;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+
+        /* User bubble */
+        .message.user p {
+            background-color: #3b82f6;
+            color: white;
+            border-bottom-right-radius: 0;
+        }
+
+        /* Bot bubble */
+        .message.bot p {
+            background-color: #e5e5ea;
+            color: black;
+            border-bottom-left-radius: 0;
+        }
+
+        /* Input section */
+        .input-container {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: #fff;
+            border-top: 1px solid #ddd;
+        }
+
+        .input-container input {
+            width: 85%;
+            padding: 10px;
+            border-radius: 20px;
+            border: 1px solid #ccc;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .input-container button {
+            width: 12%;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .input-container button:hover {
+            background-color: #2563eb;
+        }
+
+        .mic-button {
+            margin-left: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .mic-button:hover {
+            background-color: #45a049;
+        }
+
+        /* Auto-scroll to the bottom */
+        .chat-box {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+    </style>
+</head>
+<body>
+
+      <div class="chat-container">
+        <div class="chat-header">
+            Chatbot with Voice Assistant
+        </div>
+        <div class="chat-box" id="chat-box">
+            <!-- Messages will be dynamically added here -->
+        </div>
+        <div class="input-container">
+            <input type="text" id="user-input" placeholder="Type your message..." />
+            <button onclick="sendMessage()">Send</button>
+            <button class="mic-button" onclick="startVoiceRecognition()">🎙️</button>
+        </div>
+        <div class="voice-selector">
+            <label for="voice-select">Choose Bot's Voice:</label>
+            <select id="voice-select">
+                <!-- Voice options will be populated here -->
+            </select>
+        </div>
+    </div>
+
+    <script>
+        // Function to display messages
+        function displayMessage(message, sender) {
+            const chatBox = document.getElementById('chat-box');
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', sender);
+            const messageContent = document.createElement('p');
+            messageContent.textContent = message;
+            messageElement.appendChild(messageContent);
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Function to handle sending a message
+        function sendMessage() {
+            const userInput = document.getElementById('user-input').value;
+            if (userInput.trim() === '') return;
+
+            displayMessage(userInput, 'user');
+
+            const url = new URL('http://localhost:2025/ChatbotUsingJava/ChatbotServlet');
+            const params = new URLSearchParams();
+            params.append('query', userInput);
+            url.search = params.toString();
+
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(data => {
+                displayMessage(data.response, 'bot');
+                speakMessage(data.response);
+            })
+            .catch(error => {
+                displayMessage('Sorry, something went wrong. Please try again later.', 'bot');
+                console.error('Error:', error);
+            });
+
+            document.getElementById('user-input').value = '';
+        }
+
+        // Function to start voice recognition
+        function startVoiceRecognition() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'en-US';
+            recognition.start();
+
+            recognition.onresult = function(event) {
+                const userInput = event.results[0][0].transcript;
+                document.getElementById('user-input').value = userInput;
+                sendMessage();
+            };
+
+            recognition.onerror = function(event) {
+                console.error('Voice recognition error:', event.error);
+            };
+        }
+
+        // Function to speak the bot's response with selected voice
+        function speakMessage(message) {
+            const utterance = new SpeechSynthesisUtterance(message);
+            const selectedVoice = document.getElementById('voice-select').value;
+
+            // Set the voice based on the selected option
+            const voices = window.speechSynthesis.getVoices();
+            const selectedVoiceObj = voices.find(voice => voice.name === selectedVoice);
+            if (selectedVoiceObj) {
+                utterance.voice = selectedVoiceObj;
+            }
+
+            // Speak the message
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Load available voices into the dropdown
+        function loadVoices() {
+            const voiceSelect = document.getElementById('voice-select');
+            const voices = window.speechSynthesis.getVoices();
+            voices.forEach(voice => {
+                const option = document.createElement('option');
+                option.textContent = voice.name;
+                option.value = voice.name;
+                voiceSelect.appendChild(option);
+            });
+        }
+
+        // Wait for voices to be loaded
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+
+        // Initialize with default voices
+        loadVoices();
+    </script>
+  
+
+</body>
+</html>
+ 

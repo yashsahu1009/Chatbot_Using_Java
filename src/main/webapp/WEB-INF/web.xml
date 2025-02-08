@@ -1,0 +1,13 @@
+ <web-app  >
+    
+    <servlet>
+        <servlet-name>ChatbotServlet</servlet-name>
+        <servlet-class>in.chat.ChatbotServlet</servlet-class>
+    </servlet>
+    
+    <servlet-mapping>
+        <servlet-name>ChatbotServlet</servlet-name>
+        <url-pattern>/ChatbotServlet</url-pattern>
+    </servlet-mapping>
+</web-app>
+ 
